@@ -1,13 +1,8 @@
-import { Header } from './components/layout/Header';
-import { BottomNav } from './components/layout/BottomNav';
-import { HomeScreen } from './components/screens/home/HomeScreen';
-
 function App() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <HomeScreen />
-      <BottomNav />
+    <div style={{ padding: '20px', fontSize: '24px' }}>
+      <h1>FreeTalk 테스트</h1>
+      <p>이 화면이 보이면 React는 정상 작동 중입니다!</p>
     </div>
   );
 }
