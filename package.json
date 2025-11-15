@@ -1,0 +1,14 @@
+{
+  "name": "freetalk",
+  "version": "1.0.0",
+  "description": "FreeTalk - 1:1 음성 대화 플랫폼",
+  "scripts": {
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "preview": "cd frontend && npm run preview",
+    "install": "cd frontend && npm install"
+  },
+  "keywords": ["freetalk", "voice-chat"],
+  "author": "",
+  "license": "MIT"
+}
