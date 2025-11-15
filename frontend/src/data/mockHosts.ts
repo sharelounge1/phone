@@ -1,4 +1,4 @@
-import { Host } from '../types/host';
+import type { Host } from '../types/host';
 
 export const mockHosts: Host[] = [
   {

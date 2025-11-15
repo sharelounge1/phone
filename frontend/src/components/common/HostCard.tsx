@@ -1,5 +1,5 @@
 import { Star, MessageCircle, Heart, Phone } from 'lucide-react';
-import { Host } from '../../types/host';
+import type { Host } from '../../types/host';
 
 interface HostCardProps {
   host: Host;
