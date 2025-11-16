@@ -3,13 +3,28 @@ import { useNavigate } from 'react-router-dom';
 import { Phone, Mic, Headphones, Star, Zap, ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import { mockHosts } from '../data/mockHosts';
 import { GamingBottomNav } from '../components/layout/GamingBottomNav';
+import { LoginRequiredModal } from '../components/common/LoginRequiredModal';
+import { useAuth } from '../hooks/useAuth';
 
 export const HomeScreen = () => {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState(0);
   const [profileCardIndex, setProfileCardIndex] = useState(0);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginModalMessage, setLoginModalMessage] = useState('');
 
   const categories = ['🎮 전체', '🔥 인기', '✨ 신규', '🇰🇷 한국어', '🎯 게임', '💬 수다', '🎵 음악'];
+
+  // 로그인 체크 함수
+  const checkAuth = (action: () => void, message?: string) => {
+    if (isAuthenticated) {
+      action();
+    } else {
+      setLoginModalMessage(message || '이 기능을 사용하려면 로그인이 필요합니다.');
+      setShowLoginModal(true);
+    }
+  };
 
   const handleSwipeLeft = () => {
     setSelectedCategory((prev) => (prev + 1) % categories.length);
@@ -44,10 +59,18 @@ export const HomeScreen = () => {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <div className="bg-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-600" onClick={() => navigate('/point/charge')}>
-              <span className="text-emerald-400 font-bold">10,000P</span>
+            <div
+              className="bg-gray-700 px-4 py-2 rounded-lg cursor-pointer hover:bg-gray-600"
+              onClick={() => checkAuth(() => navigate('/point/charge'), '포인트 충전은 로그인 후 이용 가능합니다.')}
+            >
+              <span className="text-emerald-400 font-bold">
+                {isAuthenticated ? '10,000P' : '로그인'}
+              </span>
             </div>
-            <button className="text-gray-400 hover:text-white" onClick={() => navigate('/settings')}>
+            <button
+              className="text-gray-400 hover:text-white"
+              onClick={() => checkAuth(() => navigate('/settings'), '설정은 로그인 후 이용 가능합니다.')}
+            >
               <Settings className="w-5 h-5" />
             </button>
           </div>
@@ -112,7 +135,7 @@ export const HomeScreen = () => {
             {/* Profile Card */}
             <div
               className="bg-gradient-to-br from-purple-900/50 to-pink-900/50 rounded-2xl p-6 border-2 border-purple-500/50 backdrop-blur-sm cursor-pointer hover:border-purple-400 transition-all"
-              onClick={() => navigate(`/profile/${currentProfileHost.id}`)}
+              onClick={() => checkAuth(() => navigate(`/profile/${currentProfileHost.id}`), '프로필 상세보기는 로그인 후 이용 가능합니다.')}
             >
               <div className="flex flex-col md:flex-row gap-6">
                 {/* Profile Image */}
@@ -186,7 +209,10 @@ export const HomeScreen = () => {
                       onClick={(e) => {
                         e.stopPropagation();
                         if (currentProfileHost.status === 'online') {
-                          navigate(`/call/${currentProfileHost.id}/request`);
+                          checkAuth(
+                            () => navigate(`/call/${currentProfileHost.id}/request`),
+                            '통화 요청은 로그인 후 이용 가능합니다.'
+                          );
                         }
                       }}
                       className={`px-8 py-3 rounded-xl font-bold transition-all text-lg ${
@@ -254,7 +280,7 @@ export const HomeScreen = () => {
             <div
               key={host.id}
               className="bg-gray-800 rounded-xl p-4 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer group"
-              onClick={() => navigate(`/profile/${host.id}`)}
+              onClick={() => checkAuth(() => navigate(`/profile/${host.id}`), '프로필 상세보기는 로그인 후 이용 가능합니다.')}
             >
               {/* Header */}
               <div className="flex items-start gap-3 mb-3">
@@ -315,7 +341,10 @@ export const HomeScreen = () => {
                   onClick={(e) => {
                     e.stopPropagation();
                     if (host.status === 'online') {
-                      navigate(`/call/${host.id}/request`);
+                      checkAuth(
+                        () => navigate(`/call/${host.id}/request`),
+                        '통화 요청은 로그인 후 이용 가능합니다.'
+                      );
                     }
                   }}
                   className={`px-4 py-2 rounded-lg font-medium transition-all ${
@@ -338,6 +367,13 @@ export const HomeScreen = () => {
 
       {/* Bottom Navigation */}
       <GamingBottomNav />
+
+      {/* Login Required Modal */}
+      <LoginRequiredModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        message={loginModalMessage}
+      />
     </div>
   );
 };

@@ -61,8 +61,10 @@ function App() {
         {/* 로그인 페이지 (인증 불필요) */}
         <Route path="/login" element={<LoginScreen />} />
 
-        {/* 메인 페이지 (인증 필요) */}
-        <Route path="/" element={<ProtectedRoute><HomeScreen /></ProtectedRoute>} />
+        {/* 메인 페이지 (로그인 불필요 - 둘러보기 가능) */}
+        <Route path="/" element={<HomeScreen />} />
+
+        {/* 인증 필요 페이지 */}
         <Route path="/reservations" element={<ProtectedRoute><ReservationsScreen /></ProtectedRoute>} />
         <Route path="/history" element={<ProtectedRoute><HistoryScreen /></ProtectedRoute>} />
         <Route path="/mypage" element={<ProtectedRoute><MypageScreen /></ProtectedRoute>} />
