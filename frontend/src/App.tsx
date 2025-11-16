@@ -1,49 +1,83 @@
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { DesignSelector } from './components/DesignSelector';
+import { useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Design1 } from './components/designs/Design1';
 import { Design2 } from './components/designs/Design2';
 import { Design3 } from './components/designs/Design3';
 import { Design4 } from './components/designs/Design4';
 import { Design5 } from './components/designs/Design5';
 
-// Back Button Component
-const BackButton = () => {
-  const location = useLocation();
-
-  // Only show back button on design pages
-  if (location.pathname === '/') return null;
-
-  return (
-    <Link
-      to="/"
-      className="fixed top-4 left-4 z-50 bg-white/90 backdrop-blur-sm hover:bg-white text-gray-900 px-4 py-2 rounded-full shadow-lg font-medium text-sm flex items-center gap-2 transition-all hover:shadow-xl"
-    >
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-      </svg>
-      디자인 목록
-    </Link>
-  );
-};
-
 function App() {
-  console.log('🔵 App.tsx 로드됨!');
+  const [currentDesign, setCurrentDesign] = useState(1);
+
+  const designs = [
+    { id: 1, name: 'Tinder Style', component: <Design1 /> },
+    { id: 2, name: 'Stories Style', component: <Design2 /> },
+    { id: 3, name: 'Gaming Style', component: <Design3 /> },
+    { id: 4, name: 'Bumble Style', component: <Design4 /> },
+    { id: 5, name: 'Minimal Style', component: <Design5 /> },
+  ];
+
+  const handlePrev = () => {
+    setCurrentDesign(prev => prev === 1 ? 5 : prev - 1);
+  };
+
+  const handleNext = () => {
+    setCurrentDesign(prev => prev === 5 ? 1 : prev + 1);
+  };
+
+  const currentDesignData = designs.find(d => d.id === currentDesign);
 
   return (
-    <BrowserRouter>
-      <BackButton />
-      <div style={{ position: 'fixed', top: 0, right: 0, background: 'red', color: 'white', padding: '10px', zIndex: 9999 }}>
-        NEW APP.TSX
+    <div className="relative">
+      {/* Navigation Controls */}
+      <div className="fixed top-1/2 left-0 right-0 z-[9999] pointer-events-none">
+        <div className="max-w-screen-2xl mx-auto px-4 flex justify-between items-center">
+          {/* Previous Button */}
+          <button
+            onClick={handlePrev}
+            className="pointer-events-auto bg-white/90 hover:bg-white text-gray-900 p-4 rounded-full shadow-2xl transition-all hover:scale-110"
+          >
+            <ChevronLeft className="w-8 h-8" />
+          </button>
+
+          {/* Next Button */}
+          <button
+            onClick={handleNext}
+            className="pointer-events-auto bg-white/90 hover:bg-white text-gray-900 p-4 rounded-full shadow-2xl transition-all hover:scale-110"
+          >
+            <ChevronRight className="w-8 h-8" />
+          </button>
+        </div>
       </div>
-      <Routes>
-        <Route path="/" element={<DesignSelector />} />
-        <Route path="/1" element={<Design1 />} />
-        <Route path="/2" element={<Design2 />} />
-        <Route path="/3" element={<Design3 />} />
-        <Route path="/4" element={<Design4 />} />
-        <Route path="/5" element={<Design5 />} />
-      </Routes>
-    </BrowserRouter>
+
+      {/* Design Indicator */}
+      <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-[9999] bg-black/80 backdrop-blur-sm text-white px-6 py-3 rounded-full shadow-2xl">
+        <div className="text-center">
+          <div className="text-sm font-bold">Design {currentDesign} / 5</div>
+          <div className="text-xs text-gray-300">{currentDesignData?.name}</div>
+        </div>
+      </div>
+
+      {/* Design Dots */}
+      <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-[9999] flex gap-2">
+        {designs.map((design) => (
+          <button
+            key={design.id}
+            onClick={() => setCurrentDesign(design.id)}
+            className={`w-3 h-3 rounded-full transition-all ${
+              currentDesign === design.id
+                ? 'bg-white scale-125'
+                : 'bg-white/50 hover:bg-white/70'
+            }`}
+          />
+        ))}
+      </div>
+
+      {/* Current Design */}
+      <div className="w-full h-full">
+        {currentDesignData?.component}
+      </div>
+    </div>
   );
 }
 
