@@ -13,8 +13,8 @@ export const Design3 = () => {
               <Headphones className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">FreeTalk</h1>
-              <p className="text-xs text-gray-400">음성 채팅</p>
+              <h1 className="text-xl font-bold">DESIGN 3 - GAMING</h1>
+              <p className="text-xs text-gray-400">다크모드 & 네온</p>
             </div>
           </div>
           <div className="flex items-center gap-4">

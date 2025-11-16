@@ -23,7 +23,7 @@ export const Design1 = () => {
         <div className="max-w-md mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Zap className="w-6 h-6 text-yellow-300 fill-yellow-300" />
-            <h1 className="text-2xl font-bold text-white">FreeTalk</h1>
+            <h1 className="text-2xl font-bold text-white">DESIGN 1 - TINDER</h1>
           </div>
           <div className="bg-white/20 px-4 py-2 rounded-full">
             <span className="text-white font-bold">10,000P</span>

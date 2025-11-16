@@ -5,8 +5,12 @@ import { mockHosts } from '../../data/mockHosts';
 export const Design2 = () => {
   return (
     <div className="min-h-screen bg-black">
+      {/* Design Label */}
+      <div className="fixed top-0 left-0 right-0 z-50 bg-blue-600 text-white text-center py-2 font-bold text-xl">
+        DESIGN 2 - STORIES
+      </div>
       {/* Story Progress Bars */}
-      <div className="fixed top-0 left-0 right-0 z-50 p-4 flex gap-1">
+      <div className="fixed top-12 left-0 right-0 z-50 p-4 flex gap-1">
         {mockHosts.slice(0, 5).map((_, idx) => (
           <div key={idx} className="flex-1 h-1 bg-white/30 rounded-full overflow-hidden">
             <div className={`h-full bg-white ${idx === 0 ? 'w-full' : 'w-0'}`} />
@@ -15,7 +19,7 @@ export const Design2 = () => {
       </div>
 
       {/* Header */}
-      <div className="fixed top-8 left-0 right-0 z-40 px-4 py-4 flex items-center justify-between">
+      <div className="fixed top-20 left-0 right-0 z-40 px-4 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <ChevronLeft className="w-6 h-6 text-white" />
           <div className="w-10 h-10 rounded-full border-2 border-pink-500 p-0.5">
