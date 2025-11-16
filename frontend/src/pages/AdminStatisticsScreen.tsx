@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, TrendingUp, Users, Phone, DollarSign, Download, BarChart3 } from 'lucide-react';
+import { TrendingUp, Users, Phone, DollarSign, Download, BarChart3 } from 'lucide-react';
+import { AdminLayout } from '../components/layout/AdminLayout';
 
 export const AdminStatisticsScreen = () => {
-  const navigate = useNavigate();
   const [selectedPeriod, setSelectedPeriod] = useState<'day' | 'week' | 'month'>('day');
 
   // Mock data
@@ -50,16 +49,10 @@ export const AdminStatisticsScreen = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white pb-6">
-      {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center">
-            <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-white transition-colors">
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <h1 className="text-lg font-bold ml-4">통계</h1>
-          </div>
+    <AdminLayout>
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* Export Button */}
+        <div className="flex justify-end">
           <button
             onClick={handleExportCSV}
             className="px-4 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg font-medium transition-colors text-sm flex items-center gap-2"
@@ -68,9 +61,6 @@ export const AdminStatisticsScreen = () => {
             CSV 다운로드
           </button>
         </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         {/* Period Selection */}
         <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
           <div className="grid grid-cols-3 gap-2">
@@ -261,6 +251,6 @@ export const AdminStatisticsScreen = () => {
           </div>
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 };

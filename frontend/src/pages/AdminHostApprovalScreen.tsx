@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, X, Image as ImageIcon } from 'lucide-react';
+import { Check, X, Image as ImageIcon } from 'lucide-react';
+import { AdminLayout } from '../components/layout/AdminLayout';
 
 interface HostApplication {
   id: string;
@@ -95,23 +96,8 @@ export const AdminHostApprovalScreen = () => {
   const pendingApplications = applications.filter((app) => app.status === 'pending');
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white pb-6">
-      {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center">
-          <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-white transition-colors">
-            <ArrowLeft className="w-6 h-6" />
-          </button>
-          <h1 className="text-lg font-bold ml-4">호스트 승인 관리</h1>
-          {pendingApplications.length > 0 && (
-            <span className="ml-3 px-2 py-1 bg-yellow-500 text-gray-900 text-xs font-bold rounded-full">
-              {pendingApplications.length}건 대기
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+    <AdminLayout>
+      <div className="max-w-6xl mx-auto space-y-6">
         {pendingApplications.length === 0 ? (
           <div className="bg-gray-800 rounded-xl p-12 border border-gray-700 text-center">
             <Check className="w-16 h-16 text-gray-600 mx-auto mb-4" />
@@ -243,6 +229,6 @@ export const AdminHostApprovalScreen = () => {
           ))
         )}
       </div>
-    </div>
+    </AdminLayout>
   );
 };

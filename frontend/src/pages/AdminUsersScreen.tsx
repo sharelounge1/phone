@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Ban, CheckCircle, User } from 'lucide-react';
+import { Search, Ban, CheckCircle, User } from 'lucide-react';
+import { AdminLayout } from '../components/layout/AdminLayout';
 
 interface UserData {
   id: string;
@@ -110,18 +111,8 @@ export const AdminUsersScreen = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white pb-6">
-      {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center">
-          <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-white transition-colors">
-            <ArrowLeft className="w-6 h-6" />
-          </button>
-          <h1 className="text-lg font-bold ml-4">유저 관리</h1>
-        </div>
-      </div>
-
-      <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+    <AdminLayout>
+      <div className="max-w-6xl mx-auto space-y-6">
         {/* Search & Filter */}
         <div className="bg-gray-800 rounded-xl p-4 border border-gray-700 space-y-4">
           {/* Search */}
@@ -235,6 +226,6 @@ export const AdminUsersScreen = () => {
           )}
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 };

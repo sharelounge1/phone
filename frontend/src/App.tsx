@@ -25,6 +25,7 @@ import { HostReviewsScreen } from './pages/HostReviewsScreen';
 import { WithdrawalScreen } from './pages/WithdrawalScreen';
 
 // 관리자 전용
+import { AdminLoginScreen } from './pages/AdminLoginScreen';
 import { AdminDashboardScreen } from './pages/AdminDashboardScreen';
 import { AdminHostApprovalScreen } from './pages/AdminHostApprovalScreen';
 import { AdminUsersScreen } from './pages/AdminUsersScreen';
@@ -63,6 +64,7 @@ function App() {
         <Route path="/host/withdrawal" element={<WithdrawalScreen />} />
 
         {/* 관리자 전용 */}
+        <Route path="/admin/login" element={<AdminLoginScreen />} />
         <Route path="/admin/dashboard" element={<AdminDashboardScreen />} />
         <Route path="/admin/host-approval" element={<AdminHostApprovalScreen />} />
         <Route path="/admin/users" element={<AdminUsersScreen />} />

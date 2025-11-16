@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { Users, Phone, DollarSign, AlertTriangle, CheckCircle, TrendingUp, BarChart3, Shield } from 'lucide-react';
+import { Users, Phone, DollarSign, AlertTriangle, CheckCircle, TrendingUp, BarChart3 } from 'lucide-react';
+import { AdminLayout } from '../components/layout/AdminLayout';
 
 export const AdminDashboardScreen = () => {
   const navigate = useNavigate();
@@ -41,29 +42,8 @@ export const AdminDashboardScreen = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg flex items-center justify-center">
-              <Shield className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">관리자 대시보드</h1>
-              <p className="text-xs text-gray-400">FreeTalk Admin Panel</p>
-            </div>
-          </div>
-          <button
-            onClick={() => navigate('/mypage')}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-colors text-sm"
-          >
-            로그아웃
-          </button>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+    <AdminLayout>
+      <div className="max-w-7xl mx-auto space-y-6">
         {/* Today Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-gradient-to-br from-blue-900/50 to-cyan-900/50 rounded-xl p-6 border-2 border-blue-500/50">
@@ -233,6 +213,6 @@ export const AdminDashboardScreen = () => {
           </button>
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 };
