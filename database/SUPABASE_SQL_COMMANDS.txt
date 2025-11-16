@@ -1,0 +1,578 @@
+# Supabase SQL Editor 실행 명령어
+# 순서대로 복사하여 SQL Editor에 붙여넣기 하세요
+
+## ============================================
+## Step 1/5: Extensions 활성화
+## ============================================
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+
+
+## ============================================
+## Step 2/5: 테이블 생성 (아래 전체 복사)
+## ============================================
+
+-- 1. profiles 테이블
+CREATE TABLE IF NOT EXISTS profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  nickname VARCHAR(50) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  age INTEGER,
+  gender VARCHAR(10) CHECK (gender IN ('male', 'female', 'other')),
+  intro_text TEXT,
+  languages TEXT[],
+  interests TEXT[],
+  avatar_url TEXT,
+  is_host BOOLEAN DEFAULT FALSE,
+  host_status VARCHAR(20) DEFAULT 'none' CHECK (host_status IN ('none', 'pending', 'approved', 'rejected', 'suspended')),
+  call_price_per_min INTEGER DEFAULT 0,
+  host_approved_at TIMESTAMPTZ,
+  total_calls INTEGER DEFAULT 0,
+  total_earnings INTEGER DEFAULT 0,
+  average_rating DECIMAL(3,2) DEFAULT 0.00,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 2. point_wallets 테이블
+CREATE TABLE IF NOT EXISTS point_wallets (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  balance INTEGER DEFAULT 0 CHECK (balance >= 0),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(user_id)
+);
+
+-- 3. point_transactions 테이블
+CREATE TABLE IF NOT EXISTS point_transactions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  amount INTEGER NOT NULL,
+  balance_after INTEGER NOT NULL,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('charge', 'call_request', 'call_fee', 'earning', 'refund', 'withdrawal')),
+  description TEXT,
+  related_id UUID,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_point_transactions_user_id ON point_transactions(user_id);
+CREATE INDEX idx_point_transactions_created_at ON point_transactions(created_at DESC);
+
+-- 4. call_requests 테이블
+CREATE TABLE IF NOT EXISTS call_requests (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  caller_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  host_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('now', 'reservation')),
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected', 'canceled', 'expired')),
+  requested_time_start TIMESTAMPTZ,
+  requested_time_end TIMESTAMPTZ,
+  responded_at TIMESTAMPTZ,
+  response_message TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CHECK (
+    (type = 'now' AND requested_time_start IS NULL AND requested_time_end IS NULL) OR
+    (type = 'reservation' AND requested_time_start IS NOT NULL AND requested_time_end IS NOT NULL)
+  )
+);
+
+CREATE INDEX idx_call_requests_caller_id ON call_requests(caller_id);
+CREATE INDEX idx_call_requests_host_id ON call_requests(host_id);
+CREATE INDEX idx_call_requests_status ON call_requests(status);
+
+-- 5. call_sessions 테이블
+CREATE TABLE IF NOT EXISTS call_sessions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  request_id UUID REFERENCES call_requests(id) ON DELETE SET NULL,
+  caller_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  host_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  started_at TIMESTAMPTZ DEFAULT NOW(),
+  ended_at TIMESTAMPTZ,
+  duration_seconds INTEGER,
+  price_per_min INTEGER NOT NULL,
+  total_cost INTEGER,
+  status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'ended', 'failed')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_call_sessions_caller_id ON call_sessions(caller_id);
+CREATE INDEX idx_call_sessions_host_id ON call_sessions(host_id);
+CREATE INDEX idx_call_sessions_started_at ON call_sessions(started_at DESC);
+
+-- 6. reviews 테이블
+CREATE TABLE IF NOT EXISTS reviews (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reviewer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  target_user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  call_session_id UUID REFERENCES call_sessions(id) ON DELETE SET NULL,
+  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(reviewer_id, call_session_id)
+);
+
+CREATE INDEX idx_reviews_target_user_id ON reviews(target_user_id);
+CREATE INDEX idx_reviews_created_at ON reviews(created_at DESC);
+
+-- 7. reservations 테이블
+CREATE TABLE IF NOT EXISTS reservations (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  request_id UUID NOT NULL REFERENCES call_requests(id) ON DELETE CASCADE,
+  caller_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  host_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  reserved_time_start TIMESTAMPTZ NOT NULL,
+  reserved_time_end TIMESTAMPTZ NOT NULL,
+  status VARCHAR(20) DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'canceled', 'no_show')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(request_id)
+);
+
+CREATE INDEX idx_reservations_caller_id ON reservations(caller_id);
+CREATE INDEX idx_reservations_host_id ON reservations(host_id);
+CREATE INDEX idx_reservations_reserved_time ON reservations(reserved_time_start);
+
+-- 8. host_applications 테이블
+CREATE TABLE IF NOT EXISTS host_applications (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  gender VARCHAR(10) NOT NULL CHECK (gender IN ('male', 'female', 'other')),
+  age INTEGER NOT NULL CHECK (age >= 18),
+  bank_name VARCHAR(50) NOT NULL,
+  bank_account VARCHAR(50) NOT NULL,
+  account_holder_name VARCHAR(50) NOT NULL,
+  photo_urls TEXT[] NOT NULL,
+  intro_text TEXT,
+  call_price_per_min INTEGER NOT NULL CHECK (call_price_per_min >= 100),
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  reviewed_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  reviewed_at TIMESTAMPTZ,
+  rejection_reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CHECK (array_length(photo_urls, 1) >= 3)
+);
+
+CREATE INDEX idx_host_applications_user_id ON host_applications(user_id);
+CREATE INDEX idx_host_applications_status ON host_applications(status);
+
+-- 9. withdrawal_requests 테이블
+CREATE TABLE IF NOT EXISTS withdrawal_requests (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  amount INTEGER NOT NULL CHECK (amount > 0 AND amount % 10000 = 0),
+  bank_name VARCHAR(50) NOT NULL,
+  bank_account VARCHAR(50) NOT NULL,
+  account_holder_name VARCHAR(50) NOT NULL,
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'completed', 'rejected')),
+  processed_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  processed_at TIMESTAMPTZ,
+  rejection_reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_withdrawal_requests_user_id ON withdrawal_requests(user_id);
+CREATE INDEX idx_withdrawal_requests_status ON withdrawal_requests(status);
+
+-- 10. reports 테이블
+CREATE TABLE IF NOT EXISTS reports (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  reporter_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  reported_user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  call_session_id UUID REFERENCES call_sessions(id) ON DELETE SET NULL,
+  reason VARCHAR(50) NOT NULL CHECK (reason IN ('inappropriate', 'harassment', 'scam', 'other')),
+  description TEXT,
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed', 'action_taken', 'dismissed')),
+  reviewed_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  reviewed_at TIMESTAMPTZ,
+  admin_note TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_reports_reported_user_id ON reports(reported_user_id);
+CREATE INDEX idx_reports_status ON reports(status);
+
+-- 11. blocks 테이블
+CREATE TABLE IF NOT EXISTS blocks (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  blocker_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  blocked_user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(blocker_id, blocked_user_id),
+  CHECK (blocker_id != blocked_user_id)
+);
+
+CREATE INDEX idx_blocks_blocker_id ON blocks(blocker_id);
+
+-- Updated_at 자동 업데이트 함수 및 트리거
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_profiles_updated_at
+  BEFORE UPDATE ON profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_point_wallets_updated_at
+  BEFORE UPDATE ON point_wallets
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+
+## ============================================
+## Step 3/5: RLS 정책 설정 (아래 전체 복사)
+## ============================================
+
+-- profiles RLS
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "profiles_select_policy" ON profiles FOR SELECT USING (true);
+CREATE POLICY "profiles_update_policy" ON profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "profiles_insert_policy" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- point_wallets RLS
+ALTER TABLE point_wallets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "point_wallets_select_policy" ON point_wallets FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "point_wallets_insert_policy" ON point_wallets FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- point_transactions RLS
+ALTER TABLE point_transactions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "point_transactions_select_policy" ON point_transactions FOR SELECT USING (auth.uid() = user_id);
+
+-- call_requests RLS
+ALTER TABLE call_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "call_requests_select_policy" ON call_requests FOR SELECT USING (auth.uid() = caller_id OR auth.uid() = host_id);
+CREATE POLICY "call_requests_insert_policy" ON call_requests FOR INSERT WITH CHECK (auth.uid() = caller_id);
+CREATE POLICY "call_requests_update_policy" ON call_requests FOR UPDATE USING (auth.uid() = host_id OR auth.uid() = caller_id);
+
+-- call_sessions RLS
+ALTER TABLE call_sessions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "call_sessions_select_policy" ON call_sessions FOR SELECT USING (auth.uid() = caller_id OR auth.uid() = host_id);
+
+-- reviews RLS
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "reviews_select_policy" ON reviews FOR SELECT USING (true);
+CREATE POLICY "reviews_insert_policy" ON reviews FOR INSERT WITH CHECK (auth.uid() = reviewer_id);
+CREATE POLICY "reviews_update_policy" ON reviews FOR UPDATE USING (auth.uid() = reviewer_id);
+
+-- reservations RLS
+ALTER TABLE reservations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "reservations_select_policy" ON reservations FOR SELECT USING (auth.uid() = caller_id OR auth.uid() = host_id);
+
+-- host_applications RLS
+ALTER TABLE host_applications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "host_applications_select_policy" ON host_applications FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "host_applications_insert_policy" ON host_applications FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- withdrawal_requests RLS
+ALTER TABLE withdrawal_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "withdrawal_requests_select_policy" ON withdrawal_requests FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "withdrawal_requests_insert_policy" ON withdrawal_requests FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- reports RLS
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "reports_select_policy" ON reports FOR SELECT USING (auth.uid() = reporter_id);
+CREATE POLICY "reports_insert_policy" ON reports FOR INSERT WITH CHECK (auth.uid() = reporter_id);
+
+-- blocks RLS
+ALTER TABLE blocks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "blocks_select_policy" ON blocks FOR SELECT USING (auth.uid() = blocker_id);
+CREATE POLICY "blocks_insert_policy" ON blocks FOR INSERT WITH CHECK (auth.uid() = blocker_id);
+CREATE POLICY "blocks_delete_policy" ON blocks FOR DELETE USING (auth.uid() = blocker_id);
+
+
+## ============================================
+## Step 4/5: RPC 함수 생성 (아래 전체 복사)
+## ============================================
+
+-- 1. 회원가입 시 자동 프로필/지갑 생성
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, nickname)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'nickname', SPLIT_PART(NEW.email, '@', 1))
+  );
+
+  INSERT INTO public.point_wallets (user_id, balance)
+  VALUES (NEW.id, 0);
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION handle_new_user();
+
+-- 2. 통화 요청 생성 (200P 차감)
+CREATE OR REPLACE FUNCTION create_call_request(
+  p_host_id UUID,
+  p_type VARCHAR,
+  p_requested_time_start TIMESTAMPTZ DEFAULT NULL,
+  p_requested_time_end TIMESTAMPTZ DEFAULT NULL
+)
+RETURNS JSON AS $$
+DECLARE
+  v_caller_id UUID;
+  v_wallet_balance INTEGER;
+  v_request_id UUID;
+  v_request_cost INTEGER := 200;
+BEGIN
+  v_caller_id := auth.uid();
+  IF v_caller_id IS NULL THEN RAISE EXCEPTION 'Unauthorized'; END IF;
+
+  SELECT balance INTO v_wallet_balance FROM point_wallets WHERE user_id = v_caller_id FOR UPDATE;
+  IF v_wallet_balance < v_request_cost THEN
+    RAISE EXCEPTION 'insufficient_points: 보유 %P, 필요 %P', v_wallet_balance, v_request_cost;
+  END IF;
+
+  UPDATE point_wallets SET balance = balance - v_request_cost WHERE user_id = v_caller_id;
+
+  INSERT INTO call_requests (caller_id, host_id, type, requested_time_start, requested_time_end)
+  VALUES (v_caller_id, p_host_id, p_type, p_requested_time_start, p_requested_time_end)
+  RETURNING id INTO v_request_id;
+
+  INSERT INTO point_transactions (user_id, amount, balance_after, type, description, related_id)
+  VALUES (v_caller_id, -v_request_cost, v_wallet_balance - v_request_cost, 'call_request', '통화 요청 비용', v_request_id);
+
+  RETURN json_build_object('request_id', v_request_id, 'points_deducted', v_request_cost, 'remaining_balance', v_wallet_balance - v_request_cost);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 3. 통화 요청 응답 (수락/거절)
+CREATE OR REPLACE FUNCTION respond_to_call_request(
+  p_request_id UUID,
+  p_action VARCHAR,
+  p_reserved_start TIMESTAMPTZ DEFAULT NULL,
+  p_reserved_end TIMESTAMPTZ DEFAULT NULL,
+  p_response_message TEXT DEFAULT NULL
+)
+RETURNS JSON AS $$
+DECLARE
+  v_host_id UUID;
+  v_request RECORD;
+  v_reservation_id UUID;
+BEGIN
+  v_host_id := auth.uid();
+  IF v_host_id IS NULL THEN RAISE EXCEPTION 'Unauthorized'; END IF;
+
+  SELECT * INTO v_request FROM call_requests WHERE id = p_request_id AND host_id = v_host_id AND status = 'pending' FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Request not found or already responded'; END IF;
+
+  IF p_action = 'accept' THEN
+    UPDATE call_requests SET status = 'accepted', responded_at = NOW(), response_message = p_response_message WHERE id = p_request_id;
+
+    IF v_request.type = 'reservation' THEN
+      INSERT INTO reservations (request_id, caller_id, host_id, reserved_time_start, reserved_time_end)
+      VALUES (p_request_id, v_request.caller_id, v_host_id, p_reserved_start, p_reserved_end)
+      RETURNING id INTO v_reservation_id;
+      RETURN json_build_object('status', 'accepted', 'reservation_id', v_reservation_id, 'reserved_time_start', p_reserved_start, 'reserved_time_end', p_reserved_end);
+    ELSE
+      RETURN json_build_object('status', 'accepted', 'type', 'now');
+    END IF;
+
+  ELSIF p_action = 'reject' THEN
+    UPDATE call_requests SET status = 'rejected', responded_at = NOW(), response_message = p_response_message WHERE id = p_request_id;
+    UPDATE point_wallets SET balance = balance + 200 WHERE user_id = v_request.caller_id;
+
+    INSERT INTO point_transactions (user_id, amount, balance_after, type, description, related_id)
+    SELECT v_request.caller_id, 200, balance, 'refund', '통화 요청 거절 환불', p_request_id FROM point_wallets WHERE user_id = v_request.caller_id;
+
+    RETURN json_build_object('status', 'rejected', 'refunded', 200);
+  ELSE
+    RAISE EXCEPTION 'Invalid action';
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 4. 통화 세션 시작
+CREATE OR REPLACE FUNCTION start_call_session(p_request_id UUID)
+RETURNS JSON AS $$
+DECLARE
+  v_request RECORD;
+  v_session_id UUID;
+  v_host_price INTEGER;
+BEGIN
+  SELECT cr.*, p.call_price_per_min INTO v_request
+  FROM call_requests cr JOIN profiles p ON p.id = cr.host_id
+  WHERE cr.id = p_request_id AND cr.status = 'accepted' FOR UPDATE;
+
+  IF NOT FOUND THEN RAISE EXCEPTION 'Request not found or not accepted'; END IF;
+
+  v_host_price := v_request.call_price_per_min;
+
+  INSERT INTO call_sessions (request_id, caller_id, host_id, price_per_min, status)
+  VALUES (p_request_id, v_request.caller_id, v_request.host_id, v_host_price, 'active')
+  RETURNING id INTO v_session_id;
+
+  RETURN json_build_object('session_id', v_session_id, 'caller_id', v_request.caller_id, 'host_id', v_request.host_id, 'price_per_min', v_host_price, 'started_at', NOW());
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 5. 통화 세션 종료 및 포인트 정산
+CREATE OR REPLACE FUNCTION end_call_session(p_session_id UUID)
+RETURNS JSON AS $$
+DECLARE
+  v_session RECORD;
+  v_duration_seconds INTEGER;
+  v_total_cost INTEGER;
+  v_caller_balance INTEGER;
+  v_host_balance INTEGER;
+BEGIN
+  SELECT * INTO v_session FROM call_sessions WHERE id = p_session_id AND status = 'active' FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Session not found or already ended'; END IF;
+
+  v_duration_seconds := EXTRACT(EPOCH FROM (NOW() - v_session.started_at))::INTEGER;
+  v_total_cost := CEIL(v_duration_seconds / 60.0) * v_session.price_per_min;
+
+  SELECT balance INTO v_caller_balance FROM point_wallets WHERE user_id = v_session.caller_id FOR UPDATE;
+  IF v_caller_balance < v_total_cost THEN v_total_cost := v_caller_balance; END IF;
+
+  UPDATE point_wallets SET balance = balance - v_total_cost WHERE user_id = v_session.caller_id RETURNING balance INTO v_caller_balance;
+  UPDATE point_wallets SET balance = balance + v_total_cost WHERE user_id = v_session.host_id RETURNING balance INTO v_host_balance;
+  UPDATE call_sessions SET ended_at = NOW(), duration_seconds = v_duration_seconds, total_cost = v_total_cost, status = 'ended' WHERE id = p_session_id;
+
+  INSERT INTO point_transactions (user_id, amount, balance_after, type, description, related_id)
+  VALUES (v_session.caller_id, -v_total_cost, v_caller_balance, 'call_fee', FORMAT('통화 요금 (%s초)', v_duration_seconds), p_session_id);
+
+  INSERT INTO point_transactions (user_id, amount, balance_after, type, description, related_id)
+  VALUES (v_session.host_id, v_total_cost, v_host_balance, 'earning', FORMAT('통화 수익 (%s초)', v_duration_seconds), p_session_id);
+
+  UPDATE profiles SET total_calls = total_calls + 1, total_earnings = total_earnings + v_total_cost WHERE id = v_session.host_id;
+
+  RETURN json_build_object('session_id', p_session_id, 'duration_seconds', v_duration_seconds, 'total_cost', v_total_cost, 'caller_balance', v_caller_balance, 'host_balance', v_host_balance, 'ended_at', NOW());
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 6. 포인트 충전
+CREATE OR REPLACE FUNCTION charge_points(p_user_id UUID, p_amount_krw INTEGER, p_payment_gateway_id TEXT)
+RETURNS JSON AS $$
+DECLARE
+  v_points_added INTEGER;
+  v_new_balance INTEGER;
+BEGIN
+  v_points_added := CASE
+    WHEN p_amount_krw = 10000 THEN 10000
+    WHEN p_amount_krw = 30000 THEN 40000
+    WHEN p_amount_krw = 100000 THEN 150000
+    ELSE p_amount_krw
+  END;
+
+  UPDATE point_wallets SET balance = balance + v_points_added WHERE user_id = p_user_id RETURNING balance INTO v_new_balance;
+
+  INSERT INTO point_transactions (user_id, amount, balance_after, type, description, related_id)
+  VALUES (p_user_id, v_points_added, v_new_balance, 'charge', FORMAT('포인트 충전 (₩%s)', p_amount_krw), NULL);
+
+  RETURN json_build_object('points_added', v_points_added, 'new_balance', v_new_balance, 'payment_id', p_payment_gateway_id);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 7. 출금 신청
+CREATE OR REPLACE FUNCTION request_withdrawal(p_amount INTEGER, p_bank_name VARCHAR, p_bank_account VARCHAR, p_account_holder_name VARCHAR)
+RETURNS JSON AS $$
+DECLARE
+  v_user_id UUID;
+  v_balance INTEGER;
+  v_request_id UUID;
+BEGIN
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN RAISE EXCEPTION 'Unauthorized'; END IF;
+  IF p_amount % 10000 != 0 THEN RAISE EXCEPTION '출금은 1만원 단위로만 가능합니다'; END IF;
+
+  SELECT balance INTO v_balance FROM point_wallets WHERE user_id = v_user_id FOR UPDATE;
+  IF v_balance < p_amount THEN RAISE EXCEPTION 'insufficient_balance: 보유 %P, 출금 요청 %P', v_balance, p_amount; END IF;
+
+  UPDATE point_wallets SET balance = balance - p_amount WHERE user_id = v_user_id;
+
+  INSERT INTO withdrawal_requests (user_id, amount, bank_name, bank_account, account_holder_name)
+  VALUES (v_user_id, p_amount, p_bank_name, p_bank_account, p_account_holder_name) RETURNING id INTO v_request_id;
+
+  INSERT INTO point_transactions (user_id, amount, balance_after, type, description, related_id)
+  VALUES (v_user_id, -p_amount, v_balance - p_amount, 'withdrawal', FORMAT('출금 신청 (%s %s)', p_bank_name, p_bank_account), v_request_id);
+
+  RETURN json_build_object('request_id', v_request_id, 'amount', p_amount, 'remaining_balance', v_balance - p_amount);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 8. 호스트 신청 승인/반려
+CREATE OR REPLACE FUNCTION approve_host_application(p_application_id UUID, p_action VARCHAR, p_rejection_reason TEXT DEFAULT NULL)
+RETURNS JSON AS $$
+DECLARE
+  v_admin_id UUID;
+  v_application RECORD;
+BEGIN
+  v_admin_id := auth.uid();
+
+  SELECT * INTO v_application FROM host_applications WHERE id = p_application_id AND status = 'pending' FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Application not found or already reviewed'; END IF;
+
+  IF p_action = 'approve' THEN
+    UPDATE host_applications SET status = 'approved', reviewed_by = v_admin_id, reviewed_at = NOW() WHERE id = p_application_id;
+    UPDATE profiles SET is_host = TRUE, host_status = 'approved', host_approved_at = NOW(), call_price_per_min = v_application.call_price_per_min, gender = v_application.gender, age = v_application.age WHERE id = v_application.user_id;
+    RETURN json_build_object('status', 'approved', 'user_id', v_application.user_id);
+  ELSIF p_action = 'reject' THEN
+    UPDATE host_applications SET status = 'rejected', reviewed_by = v_admin_id, reviewed_at = NOW(), rejection_reason = p_rejection_reason WHERE id = p_application_id;
+    UPDATE profiles SET host_status = 'rejected' WHERE id = v_application.user_id;
+    RETURN json_build_object('status', 'rejected', 'reason', p_rejection_reason);
+  ELSE
+    RAISE EXCEPTION 'Invalid action';
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 9. 평균 평점 자동 업데이트
+CREATE OR REPLACE FUNCTION update_average_rating()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_avg_rating DECIMAL(3,2);
+BEGIN
+  SELECT ROUND(AVG(rating)::NUMERIC, 2) INTO v_avg_rating FROM reviews WHERE target_user_id = NEW.target_user_id;
+  UPDATE profiles SET average_rating = v_avg_rating WHERE id = NEW.target_user_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER after_review_insert
+  AFTER INSERT ON reviews
+  FOR EACH ROW
+  EXECUTE FUNCTION update_average_rating();
+
+
+## ============================================
+## Step 5/5: Storage 버킷 생성 (아래 전체 복사)
+## ============================================
+
+-- avatars 버킷
+INSERT INTO storage.buckets (id, name, public) VALUES ('avatars', 'avatars', true) ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "avatars_select_policy" ON storage.objects FOR SELECT USING (bucket_id = 'avatars');
+CREATE POLICY "avatars_insert_policy" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'avatars' AND auth.uid()::TEXT = (storage.foldername(name))[1]);
+CREATE POLICY "avatars_update_policy" ON storage.objects FOR UPDATE USING (bucket_id = 'avatars' AND auth.uid()::TEXT = (storage.foldername(name))[1]);
+CREATE POLICY "avatars_delete_policy" ON storage.objects FOR DELETE USING (bucket_id = 'avatars' AND auth.uid()::TEXT = (storage.foldername(name))[1]);
+
+-- host-photos 버킷
+INSERT INTO storage.buckets (id, name, public) VALUES ('host-photos', 'host-photos', true) ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "host_photos_select_policy" ON storage.objects FOR SELECT USING (bucket_id = 'host-photos');
+CREATE POLICY "host_photos_insert_policy" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'host-photos' AND auth.uid()::TEXT = (storage.foldername(name))[1]);
+CREATE POLICY "host_photos_update_policy" ON storage.objects FOR UPDATE USING (bucket_id = 'host-photos' AND auth.uid()::TEXT = (storage.foldername(name))[1]);
+CREATE POLICY "host_photos_delete_policy" ON storage.objects FOR DELETE USING (bucket_id = 'host-photos' AND auth.uid()::TEXT = (storage.foldername(name))[1]);
+
+
+## ============================================
+## 완료! 확인 쿼리
+## ============================================
+
+-- 테이블 생성 확인
+SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;
+
+-- RPC 함수 확인
+SELECT routine_name FROM information_schema.routines WHERE routine_schema = 'public' ORDER BY routine_name;
