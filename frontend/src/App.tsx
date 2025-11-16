@@ -27,9 +27,14 @@ const BackButton = () => {
 };
 
 function App() {
+  console.log('🔵 App.tsx 로드됨!');
+
   return (
     <BrowserRouter>
       <BackButton />
+      <div style={{ position: 'fixed', top: 0, right: 0, background: 'red', color: 'white', padding: '10px', zIndex: 9999 }}>
+        NEW APP.TSX
+      </div>
       <Routes>
         <Route path="/" element={<DesignSelector />} />
         <Route path="/1" element={<Design1 />} />
