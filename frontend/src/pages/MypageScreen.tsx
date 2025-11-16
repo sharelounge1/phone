@@ -16,7 +16,7 @@ import { GamingBottomNav } from '../components/layout/GamingBottomNav';
 export const MypageScreen = () => {
   const navigate = useNavigate();
 
-  // Mock user data
+  // Mock user data - isHost를 true로 변경하면 호스트 메뉴 표시
   const user = {
     name: '홍길동',
     email: 'user@example.com',
@@ -24,7 +24,8 @@ export const MypageScreen = () => {
     points: 10000,
     rating: 4.8,
     totalCalls: 23,
-    isHost: false,
+    isHost: true, // 호스트 여부 (true로 변경하여 테스트)
+    hostEarnings: 125000, // 호스트 수익 (포인트)
   };
 
   const menuItems = [
@@ -146,6 +147,54 @@ export const MypageScreen = () => {
             </button>
           </div>
         </div>
+
+        {/* Host Section */}
+        {user.isHost && (
+          <div className="bg-gradient-to-br from-pink-900/50 to-purple-900/50 rounded-xl p-6 border-2 border-pink-500/50 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-pink-500/20 rounded-lg flex items-center justify-center">
+                  <Star className="w-6 h-6 text-pink-400 fill-pink-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold">호스트 모드</h3>
+                  <p className="text-xs text-gray-400">승인된 호스트</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-gray-400">누적 수익</p>
+                <p className="text-2xl font-bold text-pink-400">{user.hostEarnings.toLocaleString()}P</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => navigate('/host/dashboard')}
+                className="py-3 bg-purple-600 hover:bg-purple-500 rounded-lg font-bold transition-all"
+              >
+                호스트 대시보드
+              </button>
+              <button
+                onClick={() => navigate('/host/requests')}
+                className="py-3 bg-pink-600 hover:bg-pink-500 rounded-lg font-bold transition-all"
+              >
+                통화 요청 리스트
+              </button>
+              <button
+                onClick={() => navigate('/host/earnings')}
+                className="py-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition-all"
+              >
+                수익 관리
+              </button>
+              <button
+                onClick={() => navigate('/host/withdrawal')}
+                className="py-3 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold transition-all"
+              >
+                출금 신청
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Menu List */}
         <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
