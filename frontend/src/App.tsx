@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Design0 } from './components/designs/Design0';
 import { Design1 } from './components/designs/Design1';
 import { Design2 } from './components/designs/Design2';
 import { Design3 } from './components/designs/Design3';
@@ -7,9 +8,10 @@ import { Design4 } from './components/designs/Design4';
 import { Design5 } from './components/designs/Design5';
 
 function App() {
-  const [currentDesign, setCurrentDesign] = useState(1);
+  const [currentDesign, setCurrentDesign] = useState(0);
 
   const designs = [
+    { id: 0, name: 'Original Design', component: <Design0 /> },
     { id: 1, name: 'Tinder Style', component: <Design1 /> },
     { id: 2, name: 'Stories Style', component: <Design2 /> },
     { id: 3, name: 'Gaming Style', component: <Design3 /> },
@@ -18,11 +20,11 @@ function App() {
   ];
 
   const handlePrev = () => {
-    setCurrentDesign(prev => prev === 1 ? 5 : prev - 1);
+    setCurrentDesign(prev => prev === 0 ? 5 : prev - 1);
   };
 
   const handleNext = () => {
-    setCurrentDesign(prev => prev === 5 ? 1 : prev + 1);
+    setCurrentDesign(prev => prev === 5 ? 0 : prev + 1);
   };
 
   const currentDesignData = designs.find(d => d.id === currentDesign);
@@ -53,7 +55,7 @@ function App() {
       {/* Design Indicator */}
       <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-[9999] bg-black/80 backdrop-blur-sm text-white px-6 py-3 rounded-full shadow-2xl">
         <div className="text-center">
-          <div className="text-sm font-bold">Design {currentDesign} / 5</div>
+          <div className="text-sm font-bold">{currentDesign === 0 ? 'Original' : `Design ${currentDesign}`} / 6개</div>
           <div className="text-xs text-gray-300">{currentDesignData?.name}</div>
         </div>
       </div>
